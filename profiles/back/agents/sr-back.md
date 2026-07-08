@@ -19,7 +19,7 @@ handoffs:
     agent: qa
     prompt: Verify the API implementation above against its acceptance criteria (contract + edge cases).
     send: true
-skills: [api-design, data-safety, testing-discipline]
+skills: [api-design, data-safety, testing-discipline, observability, async-jobs, caching]
 never: [components/**, pages/**, assets/**, infra/**]
 ---
 

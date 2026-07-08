@@ -19,7 +19,7 @@ handoffs:
     agent: qa
     prompt: Create/verify unit tests for the component implemented above.
     send: true
-skills: [component-patterns, styling-discipline, performance-cwv, accessibility, motion, testing-discipline, seo-technical, ux-writing]
+skills: [component-patterns, styling-discipline, performance-cwv, accessibility, motion, testing-discipline, seo-technical, ux-writing, anti-slop]
 never: [server/**, infra/**]
 ---
 
