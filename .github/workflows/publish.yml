@@ -1,0 +1,36 @@
+name: Publish
+
+# Tag-driven releases: `git tag v0.4.1 && git push --tags` publishes to npm.
+# Requires the NPM_TOKEN repository secret (npm automation/granular token with
+# publish rights on the berserqir package).
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - name: Tag must match package.json version
+        run: |
+          node -e "
+            const v = require('./installer/package.json').version;
+            const tag = process.env.GITHUB_REF_NAME.replace(/^v/, '');
+            if (v !== tag) { console.error('tag v' + tag + ' != package.json ' + v); process.exit(1); }
+          "
+      - name: Smoke suite
+        run: node scripts/smoke.mjs
+      - name: Publish to npm
+        working-directory: installer
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,15 +1,35 @@
 {
   "name": "berserqir",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Berserqir — the agent legion harness. SDD + hierarchical memory + agentic loop + behavioral evals, portable across GitHub Copilot, Claude Code and Cursor.",
-  "keywords": ["ai-agents", "agent-harness", "claude-code", "github-copilot", "cursor", "sdd", "context-engineering"],
+  "keywords": [
+    "ai-agents",
+    "agent-harness",
+    "claude-code",
+    "github-copilot",
+    "cursor",
+    "sdd",
+    "context-engineering"
+  ],
   "license": "MIT",
-  "bin": { "berserqir": "bin/berserqir.js" },
-  "files": ["bin", "core", "profiles", "adapters"],
+  "bin": {
+    "berserqir": "bin/berserqir.js"
+  },
+  "files": [
+    "bin",
+    "core",
+    "profiles",
+    "adapters"
+  ],
   "scripts": {
     "prepack": "node scripts/pack.mjs vendor",
     "postpack": "node scripts/pack.mjs clean"
   },
-  "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "git+https://github.com/berserq/berserqir.git" }
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Beserq/berserquir.git"
+  }
 }

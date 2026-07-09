@@ -22,11 +22,15 @@ if (mode === 'vendor') {
     rmSync(join(pkgRoot, d), { recursive: true, force: true })
     cpSync(src, join(pkgRoot, d), { recursive: true })
   }
-  console.log(`[pack] vendored: ${DIRS.join(', ')}`)
+  // LICENSE: npm auto-includes it from the package root — vendor from the monorepo
+  if (existsSync(join(monoRoot, 'LICENSE')))
+    cpSync(join(monoRoot, 'LICENSE'), join(pkgRoot, 'LICENSE'))
+  console.log(`[pack] vendored: ${DIRS.join(', ')}, LICENSE`)
 } else if (mode === 'clean') {
   for (const d of DIRS)
     rmSync(join(pkgRoot, d), { recursive: true, force: true })
-  console.log(`[pack] cleaned: ${DIRS.join(', ')}`)
+  rmSync(join(pkgRoot, 'LICENSE'), { force: true })
+  console.log(`[pack] cleaned: ${DIRS.join(', ')}, LICENSE`)
 } else {
   console.error('usage: node scripts/pack.mjs vendor|clean')
   process.exit(1)
