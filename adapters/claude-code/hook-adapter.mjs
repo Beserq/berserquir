@@ -79,6 +79,12 @@ if (mode === 'post-edit') {
     )
     if (j.stderr) process.stderr.write(j.stderr)
   }
+  // update nudge (best-effort, throttled to once/day inside the hook)
+  const upd = join(HOOKS_DIR, 'update-check/update-check.mjs')
+  if (existsSync(upd)) {
+    const u = run(process.execPath, [upd])
+    if (u.stderr) process.stderr.write(u.stderr)
+  }
   if (blocked) {
     process.stderr.write(blocked)
     process.exit(2)
@@ -115,6 +121,12 @@ if (mode === 'session-start') {
     } catch {
       /* malformed instincts.json is memory-validate's job */
     }
+  }
+  // update available? (reads local cache only — zero network in the hot path)
+  const upd = join(HOOKS_DIR, 'update-check/update-check.mjs')
+  if (existsSync(upd)) {
+    const u = run(process.execPath, [upd, '--print'])
+    if (u.stdout?.trim()) out.push(u.stdout.trim())
   }
   if (out.length) {
     out.push(

@@ -66,6 +66,10 @@ Turn requests into delegated, verified work: read context → decompose → rout
 3. Delegate with explicit completion criteria (these become the report's `verification` keys).
 4. Architectural doubt → architect. Product/scope doubt → product. Never resolve these yourself.
 
+## Extended capabilities (MCP)
+
+If `.berserqir/memory/mcp-map.json` exists, load it at session start: it maps the MCP servers the human configured (name · purpose · area affinity). When a task matches a mapped server's purpose, say so in the delegation ("a `playwright` MCP is available for browser verification"). **Never reference MCP tools that are not in the map** — hallucinated tooling wastes a delegation cycle.
+
 ## Report validation
 
 On every Sub-Agent Report (`core/protocols/sub-agent-report.md`): parse → schema-validate → check `verification` against the delegated criteria → accept or re-delegate with the rejection reason. Two consecutive schema rejections from one agent → escalate to human.

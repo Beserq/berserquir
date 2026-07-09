@@ -14,6 +14,7 @@ const SIZE_BUDGETS_TOKENS = {
   'memory-long.md': 4000,
   'codemap.md': 2000,
   'human-profile.md': 1500,
+  'DESIGN.md': 3000,
 }
 const REQUIRED_HEADINGS = {
   'memory-short.md': [
@@ -31,6 +32,11 @@ const REQUIRED_HEADINGS = {
     '## Active ADR references',
   ],
   'codemap.md': ['## Modules', '## Entry points', '## Edges'],
+  'DESIGN.md': [
+    '## Visual identity',
+    '## Design tokens',
+    '## Component inventory',
+  ],
 }
 const FEATURE_STATUS = new Set([
   'planned',
@@ -82,6 +88,22 @@ if (base === 'graph.json') {
     for (const end of [e.from, e.to])
       if (!ids.has(end))
         fail(`graph.json edge references unknown node "${end}" (ghost node)`)
+  }
+  process.exit(0)
+}
+
+if (base === 'mcp-map.json') {
+  let data
+  try {
+    data = JSON.parse(raw)
+  } catch (e) {
+    fail(`mcp-map.json is not valid JSON (${e.message})`)
+  }
+  if (!Array.isArray(data.servers))
+    fail(`mcp-map.json requires a "servers" array`)
+  for (const s of data.servers) {
+    if (!s.name) fail(`mcp-map server entry missing "name"`)
+    if (!s.purpose) fail(`mcp-map server "${s.name}": missing "purpose"`)
   }
   process.exit(0)
 }

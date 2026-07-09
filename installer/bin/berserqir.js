@@ -213,6 +213,17 @@ async function install({ isUpdate = false } = {}) {
       `target is not the git root (${gitRoot}) — hooks resolve paths from the git root`,
     )
 
+  // MCP servers (informational — /init question 9 maps them for the orchestrator)
+  const mcpConfigs = [
+    '.mcp.json',
+    '.cursor/mcp.json',
+    '.vscode/mcp.json',
+  ].filter((p) => fs.existsSync(path.join(target, p)))
+  if (mcpConfigs.length)
+    info(
+      `MCP config(s) detected: ${mcpConfigs.join(', ')} — /init (question 9) maps them for the orchestrator`,
+    )
+
   if (isUpdate && !prevManifest)
     die('nothing to update here — run: npx berserqir install')
   if (prevManifest)
@@ -548,6 +559,20 @@ async function doctor() {
     exists('PRD.md') && exists('SPECS.md') && exists('TESTS.md'),
     'run /init to scaffold drafts',
   )
+  // informational (0 points): front-area design artifact + unmapped MCP servers
+  if ((manifest?.profiles || []).includes('front') && !exists('DESIGN.md'))
+    info(
+      'ℹ front installed but no DESIGN.md — run /init (question 10) to seed the visual system',
+    )
+  const mcpDetected = [
+    '.mcp.json',
+    '.cursor/mcp.json',
+    '.vscode/mcp.json',
+  ].some((p) => exists(p))
+  if (mcpDetected && !exists('.berserqir/memory/mcp-map.json'))
+    info(
+      'ℹ MCP config(s) present but unmapped — run /init (question 9) so the orchestrator can route to them',
+    )
   // informational (0 points): native git pre-commit hook activation
   if (
     exists('.berserqir/hooks/commit-quality/commit-quality.mjs') &&
@@ -680,7 +705,7 @@ async function uninstall() {
   if (modified.length)
     console.log(modified.map((r) => `      ! ${r}`).join('\n'))
   info(
-    'preserved always: your memory files (memory-*.md/json, codemap, graph, human-profile), PRD/SPECS/TESTS',
+    'preserved always: your memory files (memory-*.md/json, codemap, graph, human-profile, instincts, mcp-map), PRD/SPECS/TESTS/DESIGN',
   )
   if (flags.dryRun) {
     info('dry-run — nothing removed')
@@ -712,6 +737,7 @@ async function uninstall() {
   }
   // manifest goes last (unless memory kept .berserqir alive)
   fs.rmSync(path.join(target, '.berserqir/manifest.json'), { force: true })
+  fs.rmSync(path.join(target, '.berserqir/update-check.json'), { force: true }) // runtime cache — never user work
   const bq = path.join(target, '.berserqir')
   if (fs.existsSync(bq) && walk(bq).length === 0)
     fs.rmSync(bq, { recursive: true, force: true })

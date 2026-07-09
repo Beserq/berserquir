@@ -13,7 +13,7 @@ This repository runs the **Berserqir** agent harness. Before any non-trivial act
 
 1. `.berserqir/memory/memory-long.md` + active ADRs — the constitution
 2. `PRD.md` — requirements
-3. `SPECS.md` — architecture
+3. `SPECS.md` — architecture (+ `DESIGN.md` — visual truth, when the front area is installed)
 4. `.berserqir/memory/memory-medium.json` — sprint state
 5. Skills (`.cursor/skills/`), then area rules (`.cursor/rules/`)
 

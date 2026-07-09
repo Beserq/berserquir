@@ -73,6 +73,12 @@ if (mode === 'after-edit') {
     )
     if (j.stderr) violation += j.stderr
   }
+  // update nudge (best-effort, throttled to once/day inside the hook)
+  const upd = join(HOOKS_DIR, 'update-check/update-check.mjs')
+  if (existsSync(upd)) {
+    const u = run(process.execPath, [upd])
+    if (u.stderr) violation += u.stderr
+  }
   if (violation.trim()) reply({ agentMessage: violation.trim() })
   process.exit(0)
 }

@@ -26,4 +26,4 @@ Smoke tests for **harness behavior** — they verify the protocols work, not the
 | e03 | architectural ambiguity blocks | judge |
 | e04 | Sub-Agent Report schema valid | deterministic |
 | e05 | memory sync after task | deterministic |
-| e06+ | see plan §3.8 (guardrails, escalation, deliberation, parallelism, brownfield, graph, mentorship, instincts) | — |
+| e06+ | see plan §3.8 (guardrails, escalation, deliberation, parallelism, brownfield, graph, mentorship, instincts, project artifacts) | — |

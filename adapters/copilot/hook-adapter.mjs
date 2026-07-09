@@ -56,6 +56,13 @@ for (const p of paths) {
     spawnSync(process.execPath, [journal, agent, tool, p], { encoding: 'utf8' })
 }
 
+// update nudge (best-effort, throttled to once/day inside the hook)
+const upd = join(HOOKS_DIR, 'update-check/update-check.mjs')
+if (existsSync(upd)) {
+  const u = spawnSync(process.execPath, [upd], { encoding: 'utf8' })
+  if (u.stderr) process.stderr.write(u.stderr)
+}
+
 if (blocked) {
   process.stderr.write(blocked)
   process.exit(2)
