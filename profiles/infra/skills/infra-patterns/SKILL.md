@@ -17,7 +17,7 @@ Anything you'd grieve is a liability: no named, hand-raised servers · every res
 
 ## GitOps (declarative + reconciliation)
 
-Desired state lives in git; the runtime converges toward it · **drift is a signal, not noise**: detected drift either becomes code (someone had a reason) or gets reverted (nobody did) — never ignored · manual console changes in prod = incident-grade event, not convenience.
+Desired state lives in git; the runtime converges toward it · **drift is a signal, not noise**: detected drift either becomes code (someone had a reason) or gets reverted (nobody did) — never ignored · manual console changes in prod = incident-grade event, not convenience. Deep dive: `gitops` skill (ops/dev owns the practice).
 
 ## Composition
 
