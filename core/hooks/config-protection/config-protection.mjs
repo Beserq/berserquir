@@ -45,7 +45,10 @@ const RULES = [
 ]
 for (const [re, kind] of RULES) if (re.test(base)) block(kind)
 
-if (posix.includes('/.github/workflows/') || posix.startsWith('.github/workflows/'))
+if (
+  posix.includes('/.github/workflows/') ||
+  posix.startsWith('.github/workflows/')
+)
   block('CI workflow')
 
 process.exit(0)

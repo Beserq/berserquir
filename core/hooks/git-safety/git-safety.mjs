@@ -37,7 +37,8 @@ if (/git push/.test(norm)) {
   if (/--delete/.test(norm)) block('deleting remote refs')
   block('git push — publishing (may trigger deploys)')
 }
-if (/git.*(--force-with-lease|--force)/.test(norm)) block('forced git operation')
+if (/git.*(--force-with-lease|--force)/.test(norm))
+  block('forced git operation')
 if (/git.*--no-verify/.test(norm))
   block('--no-verify — bypassing hooks/checks is forbidden')
 if (/git reset.*--hard/.test(norm))

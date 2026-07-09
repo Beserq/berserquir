@@ -414,8 +414,7 @@ cpSync(
   join(OUT, '.berserqir/hooks/claude-adapter.mjs'),
 )
 emitted.push('.berserqir/hooks/claude-adapter.mjs')
-const adapterCmd = (m) =>
-  `node .berserqir/hooks/claude-adapter.mjs ${m}` // relative to project root (hook cwd) — no shell-specific env syntax, Windows-safe
+const adapterCmd = (m) => `node .berserqir/hooks/claude-adapter.mjs ${m}` // relative to project root (hook cwd) — no shell-specific env syntax, Windows-safe
 const hookEntry = (m) => [
   { hooks: [{ type: 'command', command: adapterCmd(m), timeout: 15 }] },
 ]
