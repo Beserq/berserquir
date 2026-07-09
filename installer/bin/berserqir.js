@@ -257,12 +257,31 @@ async function install({ isUpdate = false } = {}) {
         plan.auto.push(rel) // untouched since last install → safe update
       else plan.modified.push(rel) // user-modified (or unknown origin) → needs consent
     }
+    // orphans: files the previous install managed that this version no longer ships
+    const compiledSet = new Set(compiled)
+    const orphans = { removable: [], kept: [] }
+    for (const [rel, oldHash] of Object.entries(prevManifest?.hashes || {})) {
+      if (compiledSet.has(rel)) continue
+      const abs = path.join(target, rel)
+      if (!fs.existsSync(abs)) continue
+      if (sha(abs) === oldHash)
+        orphans.removable.push(rel) // untouched → safe to delete
+      else orphans.kept.push(rel) // user modified it → never delete
+    }
     info(`plan for ${target}`)
     console.log(
-      `    new: ${plan.fresh.length} · already current: ${plan.same.length} · safe update: ${plan.auto.length} · conflicts: ${plan.modified.length}`,
+      `    new: ${plan.fresh.length} · already current: ${plan.same.length} · safe update: ${plan.auto.length} · conflicts: ${plan.modified.length} · orphans: ${orphans.removable.length}`,
     )
     if (plan.modified.length)
       console.log(plan.modified.map((r) => `      ! ${r}`).join('\n'))
+    if (orphans.removable.length)
+      console.log(
+        orphans.removable.map((r) => `      - ${r} (no longer shipped)`).join('\n'),
+      )
+    if (orphans.kept.length)
+      warn(
+        `${orphans.kept.length} orphaned file(s) kept (you modified them): ${orphans.kept.join(', ')}`,
+      )
     if (flags.dryRun) {
       info('dry-run — nothing written')
       return
@@ -306,6 +325,21 @@ async function install({ isUpdate = false } = {}) {
       fs.chmodSync(to, fs.statSync(from).mode) // hooks keep their exec bit
     }
 
+    // remove safe orphans + now-empty directories
+    for (const rel of orphans.removable) {
+      fs.rmSync(path.join(target, rel), { force: true })
+      let dir = path.dirname(path.join(target, rel))
+      while (
+        dir.startsWith(target) &&
+        dir !== target &&
+        fs.existsSync(dir) &&
+        fs.readdirSync(dir).length === 0
+      ) {
+        fs.rmdirSync(dir)
+        dir = path.dirname(dir)
+      }
+    }
+
     // manifest: hashes are of the COMPILED artifacts — disk == hash ⇒ untouched by user
     const hashes = {}
     for (const rel of compiled)
@@ -322,7 +356,7 @@ async function install({ isUpdate = false } = {}) {
     )
 
     ok(
-      `wrote ${toWrite.length} file(s) · ${plan.same.length} already current · ${overwriteModified ? 0 : plan.modified.length} kept`,
+      `wrote ${toWrite.length} file(s) · ${plan.same.length} already current · ${overwriteModified ? 0 : plan.modified.length} kept · ${orphans.removable.length} orphan(s) removed`,
     )
     console.log(`
   Next steps:
@@ -458,6 +492,14 @@ async function doctor() {
     exists('PRD.md') && exists('SPECS.md') && exists('TESTS.md'),
     'run /init to scaffold drafts',
   )
+  // informational (0 points): native git pre-commit hook activation
+  if (
+    exists('.berserqir/hooks/commit-quality/commit-quality.sh') &&
+    !exists('.git/hooks/pre-commit')
+  )
+    info(
+      'ℹ commit-quality available but not active — ln -s ../../.berserqir/hooks/commit-quality/commit-quality.sh .git/hooks/pre-commit',
+    )
 
   // 4) graph integrity (anchors resolve, no ghosts)
   const graph = readJson(path.join(target, '.berserqir/memory/graph.json'))
@@ -535,6 +577,76 @@ async function doctor() {
   process.exitCode = fails.some((c) => c.points >= 3) ? 1 : 0
 }
 
+// ---------- uninstall: remove managed files, preserve human work ----------
+async function uninstall() {
+  const target = path.resolve(flags.dir || '.')
+  const manifest = readJson(path.join(target, '.berserqir/manifest.json'))
+  if (!manifest?.hashes)
+    die('no installer-managed harness found here (no manifest with hashes)')
+
+  console.log(`\n  ⚔️  berserqir v${pkg.version} — uninstall\n`)
+
+  // NEVER touched: user memory, SDD, anything not in the manifest
+  const PRESERVE = /^\.berserqir\/memory\/(?!templates\/|schemas\/)/
+  const removable = []
+  const modified = []
+  const preserved = []
+  for (const [rel, h] of Object.entries(manifest.hashes)) {
+    const abs = path.join(target, rel)
+    if (!fs.existsSync(abs)) continue
+    if (PRESERVE.test(rel)) {
+      preserved.push(rel)
+      continue
+    }
+    if (sha(abs) === h) removable.push(rel)
+    else modified.push(rel)
+  }
+  info(`${removable.length} managed file(s) to remove`)
+  if (modified.length)
+    warn(`${modified.length} file(s) you modified — removed only with --force:`)
+  if (modified.length) console.log(modified.map((r) => `      ! ${r}`).join('\n'))
+  info(
+    'preserved always: your memory files (memory-*.md/json, codemap, graph, human-profile), PRD/SPECS/TESTS',
+  )
+  if (flags.dryRun) {
+    info('dry-run — nothing removed')
+    return
+  }
+
+  if (!flags.yes) {
+    if (!process.stdin.isTTY)
+      die('uninstall requires --yes in non-interactive mode')
+    const a = (
+      await ask(`Remove the harness from ${target}? (y/N)`, 'N')
+    ).toLowerCase()
+    if (a !== 'y' && a !== 'yes') die('aborted — nothing removed')
+  }
+
+  const toRemove = [...removable, ...(flags.force ? modified : [])]
+  for (const rel of toRemove) {
+    fs.rmSync(path.join(target, rel), { force: true })
+    let dir = path.dirname(path.join(target, rel))
+    while (
+      dir.startsWith(target) &&
+      dir !== target &&
+      fs.existsSync(dir) &&
+      fs.readdirSync(dir).length === 0
+    ) {
+      fs.rmdirSync(dir)
+      dir = path.dirname(dir)
+    }
+  }
+  // manifest goes last (unless memory kept .berserqir alive)
+  fs.rmSync(path.join(target, '.berserqir/manifest.json'), { force: true })
+  const bq = path.join(target, '.berserqir')
+  if (fs.existsSync(bq) && walk(bq).length === 0)
+    fs.rmSync(bq, { recursive: true, force: true })
+
+  ok(
+    `removed ${toRemove.length} file(s) · ${flags.force ? 0 : modified.length} modified file(s) kept · memory/SDD untouched`,
+  )
+}
+
 // ---------- help / dispatch ----------
 function help() {
   console.log(`
@@ -546,6 +658,7 @@ function help() {
     npx berserqir install [options]   Install the harness into a repo
     npx berserqir update  [options]   Recompile + refresh an existing install
     npx berserqir doctor  [--dir]     Deterministic health check (zero-LLM)
+    npx berserqir uninstall [--dir]   Remove managed files (memory/SDD preserved)
     npx berserqir version             Print version
 
   Options:
@@ -562,6 +675,7 @@ function help() {
   if (cmd === 'install') await install()
   else if (cmd === 'update') await install({ isUpdate: true })
   else if (cmd === 'doctor') await doctor()
+  else if (cmd === 'uninstall') await uninstall()
   else if (cmd === 'version' || cmd === '--version' || cmd === '-v')
     console.log(pkg.version)
   else help()

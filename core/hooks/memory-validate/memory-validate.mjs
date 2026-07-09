@@ -13,6 +13,7 @@ const SIZE_BUDGETS_TOKENS = {
   'memory-short.md': 2500,
   'memory-long.md': 4000,
   'codemap.md': 2000,
+  'human-profile.md': 1500,
 }
 const REQUIRED_HEADINGS = {
   'memory-short.md': [
@@ -21,6 +22,7 @@ const REQUIRED_HEADINGS = {
     '## Errors & learnings',
     '## Open threads',
   ],
+  'human-profile.md': ['## Areas', '## Override log', '## Growth notes'],
   'memory-long.md': [
     '## Project',
     '## Stack',
