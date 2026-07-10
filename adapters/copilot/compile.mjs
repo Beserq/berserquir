@@ -98,8 +98,8 @@ function compileAgent(doc, source, profile = null) {
   })
 
   if (Array.isArray(meta.tools))
-  if (Array.isArray(meta.tools))
-    meta.tools = meta.tools.map((t) => TOOLMAP[t] ?? t)
+    if (Array.isArray(meta.tools))
+      meta.tools = meta.tools.map((t) => TOOLMAP[t] ?? t)
   // model resolution: agent override > profile×class > class > omit (harness default — free-plan safe)
   resolveModel(MODELS, meta, profile)
 
