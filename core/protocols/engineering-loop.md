@@ -29,7 +29,9 @@ Anything requiring an ALIGN (architectural ambiguity, spec conflict, scope doubt
 
 ## Never (identical to always — sprint mode relaxes nothing)
 
-Push/deploy · guardrail overrides · memory-long writes · architectural decisions · starting work on a `blocked` feature. Wave cap and quorum stay 3.
+Push/deploy · guardrail overrides · memory-long writes · architectural decisions · starting work on a `blocked` feature · **running `/evolve`** — skill promotion always needs the human's explicit OK; evolve-ready instinct clusters detected mid-sprint go into the report as recommendations, never executed. Wave cap and quorum stay 3.
+
+**Autonomous within the sprint** (mechanical and reversible, by design): deterministic hooks · QA gate verification · eval smoke (failure = hard stop, never ignored) · one `/compress` at an iteration boundary (archive-first — lossless) · `/learn` extraction inside it · anchored local commits. **The human is consulted exactly twice: plan announcement (start) and report + decision queue (end).**
 
 ## Sprint report (end of run)
 

@@ -21,4 +21,5 @@ argument-hint: "[iterations — default 3, max 10]"
 - Local commits only — **never push**, never deploy, never `--force`/`--no-verify`.
 - Guardrail block = sprint over. Report it; do not retry or override.
 - Nothing enters memory-long. Blocked features are never resumed within the same sprint.
+- **Never run `/evolve` mid-sprint** — evolve-ready clusters go into the report as recommendations; promotion waits for the human.
 - If the journal suggests `/compress` mid-sprint, honor it at the next iteration boundary (once per sprint).
