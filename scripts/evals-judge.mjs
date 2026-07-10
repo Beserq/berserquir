@@ -37,21 +37,26 @@ if (!OR_KEY && !ANTH_KEY) {
 // OpenRouter free-model fallback chain: different models are served by
 // different upstream providers, so one broken provider (e.g. a BYOK
 // integration on the account intercepting a model with an empty balance —
-// observed in the wild) doesn't kill the run. BERSERQIR_JUDGE_MODEL pins one.
+// observed in the wild) doesn't kill the run. Static chain verified against
+// the live catalog (2026-07); if it EXHAUSTS, the script discovers currently
+// live :free models from the public models API and keeps going — free-model
+// churn can't rot this. BERSERQIR_JUDGE_MODEL pins one and disables discovery.
 const FREE_CHAIN = [
+  'openai/gpt-oss-120b:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
   'meta-llama/llama-3.3-70b-instruct:free',
-  'deepseek/deepseek-chat-v3-0324:free',
-  'google/gemini-2.0-flash-exp:free',
-  'mistralai/mistral-small-3.1-24b-instruct:free',
 ]
 const CHAIN = process.env.BERSERQIR_JUDGE_MODEL
   ? [process.env.BERSERQIR_JUDGE_MODEL]
   : OR_KEY
-    ? FREE_CHAIN
+    ? [...FREE_CHAIN]
     : ['claude-sonnet-4-5']
 let modelIdx = 0
+let discovered = false
 console.log(
-  `[evals-judge] provider: ${OR_KEY ? 'openrouter' : 'anthropic'} · model: ${CHAIN[0]}${CHAIN.length > 1 ? ` (+${CHAIN.length - 1} fallbacks)` : ''}`,
+  `[evals-judge] provider: ${OR_KEY ? 'openrouter' : 'anthropic'} · model: ${CHAIN[0]}${CHAIN.length > 1 ? ` (+${CHAIN.length - 1} fallbacks + live discovery)` : ''}`,
 )
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const TMP = join(tmpdir(), `bq-judge-${process.pid}`)
@@ -94,6 +99,24 @@ async function llm(system, user, maxTokens = 700) {
           console.error(
             `  ! ${CHAIN[i]} failed (${e.message.slice(0, 140)}) — trying ${CHAIN[i + 1]}`,
           )
+      }
+    }
+    // static chain exhausted — discover what is ACTUALLY free right now (once)
+    if (!discovered && !process.env.BERSERQIR_JUDGE_MODEL) {
+      discovered = true
+      try {
+        const extra = await discoverFreeModels(new Set(CHAIN))
+        if (extra.length) {
+          console.error(
+            `  ! static chain exhausted — live catalog lists ${extra.length} more :free model(s), retrying`,
+          )
+          const oldLen = CHAIN.length
+          CHAIN.push(...extra)
+          modelIdx = oldLen
+          return llm(system, user, maxTokens)
+        }
+      } catch {
+        /* catalog unreachable — fall through with the original error */
       }
     }
     modelIdx = CHAIN.length - 1 // keep retrying the last one on later calls
@@ -149,6 +172,25 @@ async function openrouterCall(model, system, user, maxTokens) {
   const text = data.choices?.[0]?.message?.content
   if (!text) throw new Error('empty completion from OpenRouter')
   return text
+}
+
+// live catalog: :free models with zero prompt+completion pricing, largest
+// context first (rough proxy for the newer/stronger free releases)
+async function discoverFreeModels(tried) {
+  const res = await fetch('https://openrouter.ai/api/v1/models')
+  if (!res.ok) return []
+  const { data } = await res.json()
+  return (data ?? [])
+    .filter(
+      (m) =>
+        m.id.endsWith(':free') &&
+        +(m.pricing?.prompt ?? 1) === 0 &&
+        +(m.pricing?.completion ?? 1) === 0 &&
+        !tried.has(m.id),
+    )
+    .sort((a, b) => (b.context_length || 0) - (a.context_length || 0))
+    .slice(0, 5)
+    .map((m) => m.id)
 }
 
 const SCENARIOS = [
