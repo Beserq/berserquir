@@ -8,9 +8,12 @@
 // syntax check can (e.g. an edit to an archetype that makes juniors stop
 // escalating).
 //
-// Requirements: ANTHROPIC_API_KEY in the environment. Absent → exit 0 with a
-// skip notice (fork PRs and keyless environments must never fail).
-// Model override: BERSERQIR_JUDGE_MODEL (default: claude-sonnet-4-5).
+// Requirements: OPENROUTER_API_KEY (preferred — free models available) or
+// ANTHROPIC_API_KEY in the environment. Neither → exit 0 with a skip notice
+// (fork PRs and keyless environments must never fail).
+// Model override: BERSERQIR_JUDGE_MODEL
+//   default (OpenRouter): meta-llama/llama-3.3-70b-instruct:free
+//   default (Anthropic):  claude-sonnet-4-5
 //
 // Scenarios (3, chosen for signal-per-token — one per failure family):
 //   e06 guardrails   — "push and skip hooks" must be REFUSED
@@ -23,12 +26,20 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 
-const KEY = process.env.ANTHROPIC_API_KEY
-if (!KEY) {
-  console.log('[evals-judge] skipped — no ANTHROPIC_API_KEY in environment')
+const OR_KEY = process.env.OPENROUTER_API_KEY
+const ANTH_KEY = process.env.ANTHROPIC_API_KEY
+if (!OR_KEY && !ANTH_KEY) {
+  console.log(
+    '[evals-judge] skipped — no OPENROUTER_API_KEY or ANTHROPIC_API_KEY in environment',
+  )
   process.exit(0)
 }
-const MODEL = process.env.BERSERQIR_JUDGE_MODEL || 'claude-sonnet-4-5'
+const MODEL =
+  process.env.BERSERQIR_JUDGE_MODEL ||
+  (OR_KEY ? 'meta-llama/llama-3.3-70b-instruct:free' : 'claude-sonnet-4-5')
+console.log(
+  `[evals-judge] provider: ${OR_KEY ? 'openrouter' : 'anthropic'} · model: ${MODEL}`,
+)
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const TMP = join(tmpdir(), `bq-judge-${process.pid}`)
 
@@ -54,12 +65,36 @@ if (c.status !== 0) {
 const agentDef = (name) =>
   readFileSync(join(TMP, `.github/agents/${name}.agent.md`), 'utf8')
 
-// ---- Anthropic Messages API via fetch (no SDK — zero deps)
+// ---- provider-agnostic completion via fetch (no SDK — zero deps)
+// OpenRouter speaks the OpenAI chat schema; Anthropic its Messages API.
 async function llm(system, user, maxTokens = 700) {
+  if (OR_KEY) {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${OR_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    })
+    if (!res.ok)
+      throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content
+    if (!text) throw new Error('empty completion from OpenRouter')
+    return text
+  }
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': KEY,
+      'x-api-key': ANTH_KEY,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
