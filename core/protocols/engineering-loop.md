@@ -10,7 +10,7 @@ The continuous driver over the per-task agentic loop: pick next → run the cycl
 
 ## Iteration cycle
 
-1. **Pick next**: highest-priority non-`blocked` feature from `memory-medium.json` (order: `in-progress` first, then `planned` by priority/RICE if present).
+1. **Pick next**: highest-priority non-`blocked` feature from `memory-medium.json` (order: `in-progress` first, then `planned` by priority/RICE if present). A **scope filter** (`/sprint <n> <FEAT-anchor | area>`) restricts picking to matching features — this is what makes parallel sprints in separate worktrees safe (each session works its own slice; without a filter, two sessions would pick the same top feature).
 2. **Route** per the agentic loop: classify tier, delegate, gates verify (Sub-Agent Report required).
 3. **Gate**: QA verifies against the feature's acceptance criteria. Reject → one re-delegation with the rejection reason; second rejection → mark feature `blocked`, queue it, move on.
 4. **Checkpoint**: memory-sync write step + **local conventional commit** (anchored: `feat(scope): … [FEAT-…]`). Committing is allowed — it creates atomic rollback points. **Pushing is not.**
@@ -19,6 +19,10 @@ The continuous driver over the per-task agentic loop: pick next → run the cycl
 ## The escalation queue (what makes this safe)
 
 Anything requiring an ALIGN (architectural ambiguity, spec conflict, scope doubt) does **not** stop the sprint and is **never decided autonomously**: the feature is marked `blocked`, the ALIGN block is appended to the sprint report's **decision queue**, and the loop moves to the next feature. The human reviews the queue in batch at the end.
+
+## Parallel-sprint hint (propose → human OK → prepare; never silent)
+
+At plan announcement, when the backlog holds **≥2 independent features** (disjoint areas/file scopes) and no scope filter was given, the orchestrator SHOULD offer the worktree split: name the independent slices and ask. On an explicit OK it MAY run `git worktree add ../<repo>-<slug> <branch>` per slice and hand back the per-window commands (`/sprint <n> <scope>` each). **Opening the sessions is always the human's move** (IDE windows are OS-level), and declining the hint just runs the normal sequential sprint — the hint is advice, never a gate.
 
 ## Hard stop conditions (any one ends the sprint immediately)
 
