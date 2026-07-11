@@ -23,3 +23,7 @@ argument-hint: "[iterations — default 3, max 10]"
 - Nothing enters memory-long. Blocked features are never resumed within the same sprint.
 - **Never run `/evolve` mid-sprint** — evolve-ready clusters go into the report as recommendations; promotion waits for the human.
 - If the journal suggests `/compress` mid-sprint, honor it at the next iteration boundary (once per sprint).
+
+## Parallel sprints (worktrees — human-initiated, never automatic)
+
+One sprint runs in one working tree; the orchestrator never creates worktrees on its own — edit tools, hooks and memory are anchored to the opened workspace, so parallelism across trees is an **operator** move, not an agent one (see the git-workflow skill §Worktrees). The recipe: `git worktree add` per feature branch → open each worktree as its own harness session → run `/sprint` in each. Seed **disjoint feature sets** per worktree (different areas/files), expect `memory-short.md` §Journal to conflict at merge (keep both blocks or `/compress` after), and merge branches via PR as usual. Within a single sprint, parallelism stays wave-cap-3 with disjoint file scopes in the same tree.
