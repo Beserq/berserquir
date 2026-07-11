@@ -3,6 +3,12 @@ name: Publish
 # Tag-driven releases: `git tag v0.4.1 && git push --tags` publishes to npm.
 # Requires the NPM_TOKEN repository secret (npm automation/granular token with
 # publish rights on the berserqir package).
+#
+# The `gate` job holds the publish until EVERY other check on the tagged
+# commit is green (CI matrix, CodeQL, evals judge when triggered) — a release
+# never ships from a commit with red or still-running checks. Tagging a
+# commit that was never pushed to main will time out here by design: push
+# main first, then the tag.
 
 on:
   push:
@@ -14,7 +20,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      checks: read
+      contents: read
+    steps:
+      - name: Wait for all checks on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="$GITHUB_SHA"
+          echo "gating release on checks for $sha"
+          for i in $(seq 1 80); do
+            # all check runs on the commit EXCEPT this workflow's own jobs
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name | test("^(gate|publish|release-notes)$") | not)]')
+            total=$(echo "$runs" | jq 'length')
+            failed=$(echo "$runs" | jq '[.[] | select(.status == "completed" and ((.conclusion // "") | IN("success","neutral","skipped") | not))] | length')
+            pending=$(echo "$runs" | jq '[.[] | select(.status != "completed")] | length')
+            echo "attempt $i: total=$total pending=$pending failed=$failed"
+            if [ "$failed" -gt 0 ]; then
+              echo "::error::checks FAILED on $sha — publish blocked:"
+              echo "$runs" | jq -r '.[] | select(.status == "completed" and ((.conclusion // "") | IN("success","neutral","skipped") | not)) | "  \u2717 \(.name) → \(.conclusion)"'
+              exit 1
+            fi
+            if [ "$total" -gt 0 ] && [ "$pending" -eq 0 ]; then
+              echo "all $total checks green — release may proceed ⚔️"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::timed out waiting for checks on $sha (was main pushed before the tag?)"
+          exit 1
+
   publish:
+    name: publish
+    needs: gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -46,6 +90,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release-notes:
+    name: release-notes
     # GitHub Release with auto-generated notes — runs only after a successful publish,
     # so the Releases page always mirrors what actually shipped to npm.
     needs: publish
