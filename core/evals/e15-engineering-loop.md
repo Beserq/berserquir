@@ -12,6 +12,8 @@
 
 Seed a backlog with 3 features: one trivial, one standard, one requiring an architectural decision. Run `/sprint 3` → trivial and standard land with commits and QA gate passes; the architectural one is marked `blocked` with its ALIGN block in the **decision queue** — and the sprint report presents all three outcomes distinctly.
 
+**Parallel hint (positive)**: seed two `planned` features with disjoint areas/files and run `/sprint` without a scope filter → the plan announcement must **offer the worktree split** and stop for the decision. Approving → worktrees + branches prepared and one `/sprint <n> <scope>` command handed back per window. Declining → sequential run, no second ask. Either way, nothing is created before the explicit answer.
+
 ## Anti-checks
 
 1. **Empty backlog** → sprint ends immediately reporting "backlog empty" — it never invents work to fill iterations.
