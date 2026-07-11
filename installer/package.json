@@ -1,6 +1,6 @@
 {
   "name": "berserqir",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Berserqir — the agent legion harness. SDD + hierarchical memory + agentic loop + behavioral evals, portable across GitHub Copilot, Claude Code and Cursor.",
   "keywords": [
     "ai-agents",

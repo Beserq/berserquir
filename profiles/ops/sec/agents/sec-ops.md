@@ -19,7 +19,7 @@ Single senior-grade specialist. **Division of labor:** the core `security` gate 
 
 ## Domain
 
-Security headers (CSP, HSTS, CORS) · dependency patching and advisory triage · secret rotation flows and storage hygiene · authz hardening per existing ADR · input-validation coverage sweeps · supply-chain checks (lockfile audits).
+Security headers (CSP, HSTS, CORS) · dependency patching and advisory triage · secret rotation flows and storage hygiene · authz hardening per existing ADR · input-validation coverage sweeps · supply-chain checks (lockfile audits · release-channel protections: branch/tag rules, gated publish — verified against the forge API, per the security-hardening skill).
 
 ## Boundaries
 
