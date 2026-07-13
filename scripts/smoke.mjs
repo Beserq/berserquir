@@ -578,6 +578,33 @@ for (const [h, wiring] of Object.entries(WIRING)) {
       merged.includes('keep me') &&
       merged.includes('role: human proficiency profile'),
   )
+  // CRLF variant — the exact CI-Windows case: checkout/editors save \r\n in
+  // BOTH the template and the live file; drift must still be seen and the
+  // merge must respect the file's own line endings
+  const tplProfile = join(
+    app,
+    '.berserqir/memory/templates/human-profile.template.md',
+  )
+  writeFileSync(
+    tplProfile,
+    readFileSync(tplProfile, 'utf8').replace(/\n/g, '\r\n'),
+  )
+  writeFileSync(
+    liveProfile,
+    '---\r\nttl: slow (person-scoped, evolves with evidence)\r\nrole: human proficiency profile\r\n---\r\n\r\n# human-profile — Proficiency Map\r\n\r\n## Areas\r\n\r\n| Area | Mode | Confidence | Pinned | Evidence |\r\n|------|------|------------|--------|----------|\r\n| front | learn | | | keep me crlf |\r\n\r\n## Override log\r\n\r\n-\r\n\r\n## Growth notes\r\n\r\n-\r\n',
+  )
+  const fx2 = node([bin, 'doctor', '--fix', '--yes'], {
+    cwd: app,
+    env: { ...process.env, BERSERQIR_NO_UPDATE_CHECK: '1' },
+  })
+  const merged2 = readFileSync(liveProfile, 'utf8')
+  check(
+    'doctor --fix handles CRLF template + live file (CI-Windows case)',
+    fx2.status === 0 &&
+      /sizeBudget:/.test(merged2) &&
+      merged2.includes('keep me crlf') &&
+      merged2.includes('\r\n'),
+  )
 }
 
 rmSync(TMP, { recursive: true, force: true })

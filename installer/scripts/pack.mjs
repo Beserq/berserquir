@@ -44,7 +44,9 @@ if (mode === 'vendor') {
   if (existsSync(join(monoRoot, 'LICENSE')))
     cpSync(join(monoRoot, 'LICENSE'), join(pkgRoot, 'LICENSE'))
   // seal the witness: sha256 of every shipped file (witness.json excluded from itself)
-  const pkgJson = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'))
+  const pkgJson = JSON.parse(
+    readFileSync(join(pkgRoot, 'package.json'), 'utf8'),
+  )
   const files = {}
   const roots = ['bin', ...DIRS].map((d) => join(pkgRoot, d))
   for (const r of roots)
@@ -54,7 +56,10 @@ if (mode === 'vendor') {
           .update(readFileSync(f))
           .digest('hex')
   for (const single of ['LICENSE', 'package.json'])
-    if (existsSync(join(pkgRoot, single)) && statSync(join(pkgRoot, single)).isFile())
+    if (
+      existsSync(join(pkgRoot, single)) &&
+      statSync(join(pkgRoot, single)).isFile()
+    )
       files[single] = createHash('sha256')
         .update(readFileSync(join(pkgRoot, single)))
         .digest('hex')

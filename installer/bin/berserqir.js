@@ -716,10 +716,15 @@ async function doctor(isRerun = false) {
     //     seeded (additive only — never a value change, never the body)
     for (const d of frontmatterDrift(target)) {
       const live = fs.readFileSync(d.livePath, 'utf8')
-      const end = live.indexOf('\n---', 4)
+      const eol = live.includes('\r\n') ? '\r\n' : '\n' // respect the file's own line endings
+      const close = live.match(/\r?\n---/)
+      if (!close) continue
       fs.writeFileSync(
         d.livePath,
-        live.slice(0, end) + '\n' + d.missing.join('\n') + live.slice(end),
+        live.slice(0, close.index) +
+          eol +
+          d.missing.join(eol) +
+          live.slice(close.index),
       )
       info(
         `fixed: added ${d.missing.length} frontmatter key(s) to ${d.name} (${d.missing
@@ -758,11 +763,13 @@ async function doctor(isRerun = false) {
 // harness-owned metadata (sizeBudget, ttl…): when a template gains one, doctor
 // reports it and --fix merges the MISSING lines only. Values and body untouched.
 function frontmatterDrift(target) {
+  // CRLF-tolerant: Windows checkouts (autocrlf) and Windows editors save \r\n
   const fmLines = (text) => {
-    if (!text.startsWith('---\n')) return null
-    const end = text.indexOf('\n---', 4)
+    const t = text.replace(/\r\n/g, '\n')
+    if (!t.startsWith('---\n')) return null
+    const end = t.indexOf('\n---', 4)
     if (end === -1) return null
-    return text.slice(4, end).split('\n')
+    return t.slice(4, end).split('\n')
   }
   const out = []
   const tplDir = path.join(target, '.berserqir/memory/templates')
@@ -869,7 +876,9 @@ async function verify() {
       )
     else ok('installed managed files match the install manifest')
   } else {
-    info('no install manifest here — run verify from a repo with Berserqir installed (or pass --dir)')
+    info(
+      'no install manifest here — run verify from a repo with Berserqir installed (or pass --dir)',
+    )
   }
 
   console.log('')

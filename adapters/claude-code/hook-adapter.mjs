@@ -139,6 +139,7 @@ if (mode === 'session-start') {
   const shortPath = join(MEMORY_DIR, 'memory-short.md')
   if (existsSync(shortPath)) {
     const focus = readFileSync(shortPath, 'utf8')
+      .replace(/\r\n/g, '\n') // Windows editors save CRLF — regexes below assume \n
       .match(/## Focus\n([\s\S]*?)(?=\n## |$)/)?.[1]
       ?.replace(/<!--[\s\S]*?-->/g, '')
       .trim()
@@ -170,7 +171,7 @@ if (mode === 'session-start') {
   // human-gated mining is the write path, this is just the lens. ~50 tokens.
   const profPath = join(MEMORY_DIR, 'human-profile.md')
   if (existsSync(profPath)) {
-    const prof = readFileSync(profPath, 'utf8')
+    const prof = readFileSync(profPath, 'utf8').replace(/\r\n/g, '\n') // CRLF-tolerant
     const areas = (prof.match(/## Areas\n([\s\S]*?)(?=\n## |$)/)?.[1] ?? '')
       .split('\n')
       .filter((l) => /^\|/.test(l) && !/^\|[\s-]*Area|^\|[\s|:-]+\|/.test(l))

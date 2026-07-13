@@ -1,0 +1,6 @@
+# Line endings: the harness parses memory/template files with \n-based
+# regexes and hashes shipped files for the witness — checkouts must be LF
+# everywhere (Windows runners default to autocrlf=true without this).
+# Hooks stay CRLF-tolerant anyway for files users' editors touch.
+* text=auto eol=lf
+*.gif binary
