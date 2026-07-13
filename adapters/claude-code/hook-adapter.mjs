@@ -164,6 +164,36 @@ if (mode === 'session-start') {
       /* malformed instincts.json is memory-validate's job */
     }
   }
+  // profile card (deterministic peer-card pattern): a compact read-view of
+  // human-profile.md §Areas + last override, so mentorship calibration is
+  // always in context — the profile is the source of truth, /learn's
+  // human-gated mining is the write path, this is just the lens. ~50 tokens.
+  const profPath = join(MEMORY_DIR, 'human-profile.md')
+  if (existsSync(profPath)) {
+    const prof = readFileSync(profPath, 'utf8')
+    const areas = (prof.match(/## Areas\n([\s\S]*?)(?=\n## |$)/)?.[1] ?? '')
+      .split('\n')
+      .filter((l) => /^\|/.test(l) && !/^\|[\s-]*Area|^\|[\s|:-]+\|/.test(l))
+      .map((l) => l.split('|').map((c) => c.trim()))
+      .filter((c) => c[1] && c[2]) // area + mode filled
+      .map(
+        (c) => `${c[1]}: ${c[2]}${/true/i.test(c[4] ?? '') ? ' (pinned)' : ''}`,
+      )
+    const overrides = (
+      prof.match(/## Override log\n([\s\S]*?)(?=\n## |$)/)?.[1] ?? ''
+    )
+      .split('\n')
+      .filter((l) => /^- \S/.test(l.trim()) && l.trim() !== '-')
+    const card = []
+    if (areas.length) card.push(`- ${areas.join(' · ')}`)
+    if (overrides.length)
+      card.push(`- last override: ${overrides.at(-1).trim().slice(2)}`)
+    if (card.length)
+      out.push(
+        `## Human profile card (mentorship calibration — .berserqir/protocols/mentorship.md)\n` +
+          card.join('\n'),
+      )
+  }
   // update available? (reads local cache only — zero network in the hot path)
   const upd = join(HOOKS_DIR, 'update-check/update-check.mjs')
   if (existsSync(upd)) {

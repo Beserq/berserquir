@@ -336,6 +336,41 @@ check(
     fr.stderr.includes('possible loop'),
   )
 }
+// profile card: session-start injects a compact human-profile read-view
+{
+  const dir = join(TMP, 'profile-card')
+  const hooks = join(dir, 'hooks')
+  const mem = join(dir, 'memory')
+  mkdirSync(hooks, { recursive: true })
+  mkdirSync(mem, { recursive: true })
+  cpSync(
+    join(ROOT, 'adapters/claude-code/hook-adapter.mjs'),
+    join(hooks, 'claude-adapter.mjs'),
+  )
+  writeFileSync(
+    join(mem, 'human-profile.md'),
+    '# human-profile\n\n## Areas\n\n| Area | Mode | Confidence | Pinned | Evidence |\n|------|------|------------|--------|----------|\n| front | learn | 0.8 | | asks styling questions |\n| back | productivity | 0.9 | true | ships reviews fast |\n\n## Override log\n\n- 2026-07-10 "just do it" on front styling\n\n## Growth notes\n\n-\n',
+  )
+  const sc = node([join(hooks, 'claude-adapter.mjs'), 'session-start'])
+  check(
+    'session-start injects the profile card (areas + pin + last override)',
+    sc.status === 0 &&
+      sc.stdout.includes('Human profile card') &&
+      sc.stdout.includes('front: learn') &&
+      sc.stdout.includes('back: productivity (pinned)') &&
+      sc.stdout.includes('last override: 2026-07-10'),
+  )
+  // empty template → no card (fresh installs stay silent)
+  cpSync(
+    join(ROOT, 'core/memory/templates/human-profile.template.md'),
+    join(mem, 'human-profile.md'),
+  )
+  const se = node([join(hooks, 'claude-adapter.mjs'), 'session-start'])
+  check(
+    'empty profile template injects no card',
+    se.status === 0 && !se.stdout.includes('Human profile card'),
+  )
+}
 // session-verify: project's own failing typecheck blocks the Stop
 {
   const proj = join(TMP, 'verify-proj')

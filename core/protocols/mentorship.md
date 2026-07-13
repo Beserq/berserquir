@@ -12,7 +12,7 @@ Agents are an **extension of the human's knowledge, not a substitute for it**. T
 
 ## Proficiency detection
 
-**Profile lives in `.berserqir/memory/human-profile.md`** (per-area levels + evidence + confidence), seeded at `/init` and updated via the memory-sync ritual.
+**Profile lives in `.berserqir/memory/human-profile.md`** (per-area levels + evidence + confidence), seeded at `/init` and updated via the memory-sync ritual. A compact **profile card** (§Areas filled rows + last override) is loaded at session start — injected automatically on harnesses with session hooks, carried by the memory-sync ritual step 1 everywhere else — so calibration never depends on remembering to look.
 
 | Signal | Source | Weight |
 |---|---|---|

@@ -21,7 +21,7 @@ Contradiction between levels → stop and escalate. Never pick silently.
 
 ## Memory
 
-Lives in `.berserqir/memory/`: `memory-long.md` (constitution) · `memory-medium.json` (sprint) · `memory-short.md` (session journal) · `codemap.md` (repo map — read this FIRST when navigating) · `instincts.json` (learned project patterns — injected automatically at SessionStart, cap 6). Missing? Run `/berserqir init`.
+Lives in `.berserqir/memory/`: `memory-long.md` (constitution) · `memory-medium.json` (sprint) · `memory-short.md` (session journal) · `codemap.md` (repo map — read this FIRST when navigating) · `instincts.json` (learned project patterns — injected automatically at SessionStart, cap 6) · `human-profile.md` (proficiency map — the profile card is injected automatically at SessionStart; it calibrates depth in every mode, from teach-first to full-speed). Missing? Run `/berserqir init`.
 
 ## Area instructions (path-triggered)
 
