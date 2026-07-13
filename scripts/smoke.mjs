@@ -535,6 +535,51 @@ for (const [h, wiring] of Object.entries(WIRING)) {
   )
 }
 
+// witness + verify: the supply-chain chain closes (against the copilot app)
+{
+  const app = join(TMP, 'app-copilot')
+  const bin = join(pkgDir, 'bin/berserqir.js')
+  check(
+    'pack seals the witness into the tarball',
+    existsSync(join(pkgDir, 'witness.json')),
+  )
+  const v1 = node([bin, 'verify'], { cwd: app })
+  check(
+    'verify passes on genuine package bytes',
+    v1.status === 0 && v1.stdout.includes('match the sealed witness'),
+    v1.stdout.trim().slice(0, 200),
+  )
+  // tamper a vendored guardrail source → verify must scream and exit 1
+  const victim = join(pkgDir, 'core/hooks/git-safety/git-safety.mjs')
+  const original = readFileSync(victim, 'utf8')
+  writeFileSync(victim, original + '\n// tampered\n')
+  const v2 = node([bin, 'verify'], { cwd: app })
+  writeFileSync(victim, original)
+  check(
+    'verify detects a tampered package (exit 1, names the file)',
+    v2.status === 1 && v2.stdout.includes('git-safety.mjs'),
+  )
+  // frontmatter drift: live memory seeded without a key the template has →
+  // doctor reports, --fix merges the missing line only (body untouched)
+  const liveProfile = join(app, '.berserqir/memory/human-profile.md')
+  writeFileSync(
+    liveProfile,
+    '---\nttl: slow (person-scoped, evolves with evidence)\nrole: human proficiency profile\n---\n\n# human-profile — Proficiency Map\n\n## Areas\n\n| Area | Mode | Confidence | Pinned | Evidence |\n|------|------|------------|--------|----------|\n| front | learn | | | keep me |\n\n## Override log\n\n-\n\n## Growth notes\n\n-\n',
+  )
+  const fx = node([bin, 'doctor', '--fix', '--yes'], {
+    cwd: app,
+    env: { ...process.env, BERSERQIR_NO_UPDATE_CHECK: '1' },
+  })
+  const merged = readFileSync(liveProfile, 'utf8')
+  check(
+    'doctor --fix merges missing frontmatter keys into live memory',
+    fx.status === 0 &&
+      /^sizeBudget:/m.test(merged) &&
+      merged.includes('keep me') &&
+      merged.includes('role: human proficiency profile'),
+  )
+}
+
 rmSync(TMP, { recursive: true, force: true })
 console.log(
   failures === 0 ? '\nSMOKE: all green ✓' : `\nSMOKE: ${failures} failure(s) ✗`,

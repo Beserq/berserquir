@@ -583,6 +583,15 @@ async function doctor(isRerun = false) {
     info(
       'ℹ commit-quality available but not active — run: npx berserqir hook-install',
     )
+  // informational (0 points): live memory files missing template frontmatter keys
+  // (live memory is the user's — update never touches it; --fix merges keys only)
+  const fmDrift = frontmatterDrift(target)
+  if (fmDrift.length)
+    info(
+      `ℹ ${fmDrift.length} memory file(s) missing frontmatter key(s) from their templates (${fmDrift
+        .map((d) => d.name)
+        .join(', ')}) — npx berserqir doctor --fix syncs them`,
+    )
   // informational (0 points): evolve-ready instinct clusters
   const instincts = readJson(
     path.join(target, '.berserqir/memory/instincts.json'),
@@ -703,6 +712,22 @@ async function doctor(isRerun = false) {
       info('fixed: seeded instincts.json from template')
       fixed++
     }
+    // 2b) frontmatter keys the template gained since this memory file was
+    //     seeded (additive only — never a value change, never the body)
+    for (const d of frontmatterDrift(target)) {
+      const live = fs.readFileSync(d.livePath, 'utf8')
+      const end = live.indexOf('\n---', 4)
+      fs.writeFileSync(
+        d.livePath,
+        live.slice(0, end) + '\n' + d.missing.join('\n') + live.slice(end),
+      )
+      info(
+        `fixed: added ${d.missing.length} frontmatter key(s) to ${d.name} (${d.missing
+          .map((l) => l.split(':')[0])
+          .join(', ')})`,
+      )
+      fixed++
+    }
     // 3) managed files missing/broken (wiring, guardrails) → update repairs them
     const managedBroken = fails.some(
       (c) => c.name.startsWith('guardrail') || c.name.startsWith('hooks wired'),
@@ -726,6 +751,129 @@ async function doctor(isRerun = false) {
   }
 
   process.exitCode = fails.some((c) => c.points >= 3) ? 1 : 0
+}
+
+// ---------- frontmatter drift: template keys a live memory file was seeded without ----------
+// Live memory is user-owned — update never rewrites it. But frontmatter keys are
+// harness-owned metadata (sizeBudget, ttl…): when a template gains one, doctor
+// reports it and --fix merges the MISSING lines only. Values and body untouched.
+function frontmatterDrift(target) {
+  const fmLines = (text) => {
+    if (!text.startsWith('---\n')) return null
+    const end = text.indexOf('\n---', 4)
+    if (end === -1) return null
+    return text.slice(4, end).split('\n')
+  }
+  const out = []
+  const tplDir = path.join(target, '.berserqir/memory/templates')
+  if (!fs.existsSync(tplDir)) return out
+  for (const name of [
+    'memory-long.md',
+    'memory-short.md',
+    'codemap.md',
+    'human-profile.md',
+  ]) {
+    const livePath = path.join(target, '.berserqir/memory', name)
+    const tplPath = path.join(tplDir, name.replace('.md', '.template.md'))
+    if (!fs.existsSync(livePath) || !fs.existsSync(tplPath)) continue
+    const live = fmLines(fs.readFileSync(livePath, 'utf8'))
+    const tpl = fmLines(fs.readFileSync(tplPath, 'utf8'))
+    if (!live || !tpl) continue
+    const liveKeys = new Set(
+      live.map((l) => l.match(/^([\w-]+)\s*:/)?.[1]).filter(Boolean),
+    )
+    const missing = tpl.filter((l) => {
+      const k = l.match(/^([\w-]+)\s*:/)?.[1]
+      return k && !liveKeys.has(k)
+    })
+    if (missing.length) out.push({ name, livePath, missing })
+  }
+  return out
+}
+
+// ---------- verify: close the supply chain — sealed witness → disk ----------
+// The install manifest answers "did anything change since install?" (computed
+// locally, trusts the tarball). The witness answers "is this package the bytes
+// the CI released?" — sealed at pack time inside the tarball, which the npm
+// --provenance attestation (Sigstore, keyless) covers. Tampered package ⇒
+// either the attestation breaks or the witness mismatches. Exit 1 only on
+// witness mismatch; local drift of managed files is yours and informational.
+async function verify() {
+  const target = path.resolve(flags.dir || process.cwd())
+  const pkgRootDir = path.join(__dirname, '..')
+  console.log(`\n  ⚔️  berserqir v${pkg.version} — verify\n`)
+  let failed = false
+
+  // 1) package bytes vs sealed witness
+  const witness = readJson(path.join(pkgRootDir, 'witness.json'))
+  if (!witness) {
+    info(
+      'no sealed witness in this package — dev checkout or a pre-witness release (≤ 0.6.x); packs seal it in CI',
+    )
+  } else {
+    const bad = []
+    for (const [rel, h] of Object.entries(witness.files)) {
+      const abs = path.join(pkgRootDir, rel)
+      if (!fs.existsSync(abs)) bad.push(`${rel} (missing)`)
+      else if (sha(abs) !== h) bad.push(rel)
+    }
+    if (bad.length) {
+      warn(
+        `WITNESS MISMATCH — ${bad.length} file(s) differ from the sealed release:`,
+      )
+      bad.slice(0, 10).forEach((r) => console.log(`      ! ${r}`))
+      warn(
+        'do NOT trust this package — reinstall from the registry: npx berserqir@latest',
+      )
+      failed = true
+    } else {
+      ok(
+        `package bytes match the sealed witness — ${Object.keys(witness.files).length} files, sealed ${witness.sealedAt} (v${witness.version})`,
+      )
+    }
+  }
+
+  // 2) provenance attestation (registry-reported — best-effort, offline-safe)
+  try {
+    const r = spawnSync(
+      'npm',
+      ['view', `berserqir@${pkg.version}`, 'dist.attestations.url'],
+      {
+        encoding: 'utf8',
+        timeout: 8000,
+        shell: process.platform === 'win32',
+      },
+    )
+    const url = (r.stdout || '').trim()
+    if (url)
+      ok(`provenance attestation published for v${pkg.version} (Sigstore)`)
+    else
+      info(
+        `no provenance attestation reported by the registry for v${pkg.version}`,
+      )
+  } catch {
+    info('registry unreachable — attestation check skipped (offline)')
+  }
+
+  // 3) installed managed files vs the install manifest (local drift — yours)
+  const manifest = readJson(path.join(target, '.berserqir/manifest.json'))
+  if (manifest?.hashes) {
+    let drift = 0
+    for (const [rel, h] of Object.entries(manifest.hashes)) {
+      const abs = path.join(target, rel)
+      if (fs.existsSync(abs) && sha(abs) !== h) drift++
+    }
+    if (drift)
+      info(
+        `${drift} managed file(s) differ from your install manifest — expected if you customized them (npx berserqir update shows the plan)`,
+      )
+    else ok('installed managed files match the install manifest')
+  } else {
+    info('no install manifest here — run verify from a repo with Berserqir installed (or pass --dir)')
+  }
+
+  console.log('')
+  if (failed) process.exit(1)
 }
 
 // ---------- hook-install: wire commit-quality as native git hooks ----------
@@ -880,6 +1028,7 @@ function help() {
     npx berserqir install [options]   Install the harness into a repo
     npx berserqir update  [options]   Recompile + refresh an existing install
     npx berserqir doctor  [--dir] [--fix]   Health check (zero-LLM); --fix applies mechanical repairs
+    npx berserqir verify  [--dir]           Supply-chain check: package bytes vs the sealed witness + provenance + local drift
     npx berserqir hook-install [--dir]      Wire commit-quality as native git hooks (pre-commit + commit-msg)
     npx berserqir hook-uninstall [--dir]    Remove the berserqir-managed git hooks
     npx berserqir uninstall [--dir]   Remove managed files (memory/SDD preserved)
@@ -899,6 +1048,7 @@ function help() {
   if (cmd === 'install') await install()
   else if (cmd === 'update') await install({ isUpdate: true })
   else if (cmd === 'doctor') await doctor()
+  else if (cmd === 'verify') await verify()
   else if (cmd === 'hook-install') hookInstall()
   else if (cmd === 'hook-uninstall') hookUninstall()
   else if (cmd === 'uninstall') await uninstall()
