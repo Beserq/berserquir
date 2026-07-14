@@ -24,6 +24,8 @@ Anything requiring an ALIGN (architectural ambiguity, spec conflict, scope doubt
 
 At plan announcement, when the backlog holds **≥2 independent features** (disjoint areas/file scopes) and no scope filter was given, the orchestrator SHOULD offer the worktree split: name the independent slices and ask. On an explicit OK it MAY run `git worktree add ../<repo>-<slug> <branch>` per slice and hand back the per-window commands (`/sprint <n> <scope>` each). **Opening the sessions is always the human's move** (IDE windows are OS-level), and declining the hint just runs the normal sequential sprint — the hint is advice, never a gate.
 
+Two tells that the gate was skipped — both are protocol violations: **proposing any action inside the announcement** ("I'll create the branch unless you object" — the announcement ends the turn; preparation starts only after the literal OK) and **offering a single shared branch for multiple features** (the split is one worktree + one branch *per slice*; a shared branch recreates the very collisions the split exists to prevent).
+
 ## Hard stop conditions (any one ends the sprint immediately)
 
 - **N iterations reached** (default 3; explicit `/sprint <n>`, hard cap 10)
